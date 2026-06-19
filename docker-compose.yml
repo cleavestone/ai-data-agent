@@ -1,0 +1,58 @@
+services:
+
+  # ─────────────────────────────────────────
+  # PostgreSQL — primary data store
+  # Base config shared across all environments
+  # ─────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai_agent_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_READONLY_USER: ${POSTGRES_READONLY_USER}
+      POSTGRES_READONLY_PASSWORD: ${POSTGRES_READONLY_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./database/02_create_readonly_user.sh:/docker-entrypoint-initdb.d/02_create_readonly_user.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai_agent_network
+
+  # ─────────────────────────────────────────
+  # Redis — caching + rate limiting
+  # Base config shared across all environments
+  # ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ai_agent_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai_agent_network
+
+# ─────────────────────────────────────────
+# Volumes and network defined at base level
+# so all compose files share them
+# ─────────────────────────────────────────
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ai_agent_network:
+    driver: bridge
