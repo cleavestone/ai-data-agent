@@ -2,6 +2,8 @@
 
 A full-stack natural language data querying tool. Ask questions about your business data in plain English and get answers as charts, tables, or stat cards — powered by an OpenAI agentic loop that writes and executes SQL on your behalf.
 
+![AI Data Agent UI](docs/assets/Screenshot3.png)
+
 ![Stack](https://img.shields.io/badge/Python-3.13-blue) ![Stack](https://img.shields.io/badge/FastAPI-0.136-green) ![Stack](https://img.shields.io/badge/React-18-61dafb) ![Stack](https://img.shields.io/badge/OpenAI-GPT--4o-orange) ![Stack](https://img.shields.io/badge/PostgreSQL-16-336791) ![Stack](https://img.shields.io/badge/Redis-8-red)
 
 ---
@@ -19,34 +21,37 @@ A full-stack natural language data querying tool. Ask questions about your busin
 ## Tech stack
 
 ### Backend
-| Layer | Technology |
-|---|---|
-| API framework | FastAPI 0.136 + Uvicorn |
-| Language | Python 3.13 |
-| AI / LLM | OpenAI GPT-4o (tool-use / function calling) |
-| Database driver | asyncpg (async PostgreSQL) |
-| Caching | Redis 8 via redis-py |
-| Config / validation | Pydantic v2 + pydantic-settings |
-| Package manager | uv |
-| Tests | pytest + pytest-asyncio + httpx |
+
+| Layer               | Technology                                  |
+| ------------------- | ------------------------------------------- |
+| API framework       | FastAPI 0.136 + Uvicorn                     |
+| Language            | Python 3.13                                 |
+| AI / LLM            | OpenAI GPT-4o (tool-use / function calling) |
+| Database driver     | asyncpg (async PostgreSQL)                  |
+| Caching             | Redis 8 via redis-py                        |
+| Config / validation | Pydantic v2 + pydantic-settings             |
+| Package manager     | uv                                          |
+| Tests               | pytest + pytest-asyncio + httpx             |
 
 ### Frontend
-| Layer | Technology |
-|---|---|
-| Framework | React 18 + TypeScript |
-| Build tool | Vite 5 |
-| Styling | Tailwind CSS 3 (custom dark theme) |
-| Charts | Recharts 2 |
-| Tables | TanStack Table v8 |
-| HTTP client | Axios |
+
+| Layer       | Technology                         |
+| ----------- | ---------------------------------- |
+| Framework   | React 18 + TypeScript              |
+| Build tool  | Vite 5                             |
+| Styling     | Tailwind CSS 3 (custom dark theme) |
+| Charts      | Recharts 2                         |
+| Tables      | TanStack Table v8                  |
+| HTTP client | Axios                              |
 
 ### Infrastructure
-| Service | Technology |
-|---|---|
-| Database | PostgreSQL 16 (Docker) |
-| Cache | Redis 8 (Docker) |
-| DB admin | pgAdmin 4 (Docker, dev only) |
-| Container orchestration | Docker Compose |
+
+| Service                 | Technology                   |
+| ----------------------- | ---------------------------- |
+| Database                | PostgreSQL 16 (Docker)       |
+| Cache                   | Redis 8 (Docker)             |
+| DB admin                | pgAdmin 4 (Docker, dev only) |
+| Container orchestration | Docker Compose               |
 
 ---
 
@@ -190,12 +195,13 @@ The demo database ships with five tables and four pre-built views:
 **Tables:** `customers` · `categories` · `products` · `orders` · `order_items`
 
 **Views:**
-| View | Description |
-|---|---|
-| `v_order_details` | Orders with full customer and product details |
-| `v_monthly_revenue` | Revenue, cost, and profit grouped by month |
-| `v_product_performance` | Sales count and profit per product |
-| `v_customer_summary` | Customer profiles with lifetime value and tier |
+
+| View                      | Description                                    |
+| ------------------------- | ---------------------------------------------- |
+| `v_order_details`       | Orders with full customer and product details  |
+| `v_monthly_revenue`     | Revenue, cost, and profit grouped by month     |
+| `v_product_performance` | Sales count and profit per product             |
+| `v_customer_summary`    | Customer profiles with lifetime value and tier |
 
 ---
 
@@ -259,32 +265,32 @@ npm run dev
 
 ## Environment variables
 
-| Variable | Description | Default |
-|---|---|---|
-| `OPENAI_API_KEY` | Your OpenAI API key | — |
-| `OPENAI_MODEL` | Model to use | `gpt-4o` |
-| `POSTGRES_HOST` | Postgres host | `localhost` |
-| `POSTGRES_PORT` | Postgres port | `5432` |
-| `POSTGRES_DB` | Database name | `agentdb` |
-| `POSTGRES_USER` | Admin user | `agentuser` |
-| `POSTGRES_PASSWORD` | Admin password | — |
-| `POSTGRES_READONLY_USER` | Read-only user for the AI | `agentreadonly` |
-| `POSTGRES_READONLY_PASSWORD` | Read-only user password | — |
-| `REDIS_HOST` | Redis host | `localhost` |
-| `REDIS_PORT` | Redis port | `6379` |
-| `REDIS_CACHE_TTL` | Query result cache duration (seconds) | `3600` |
-| `SECRET_KEY` | JWT signing key (future auth) | — |
-| `MAX_ROWS_PER_QUERY` | Hard cap on rows returned | `1000` |
+| Variable                       | Description                           | Default           |
+| ------------------------------ | ------------------------------------- | ----------------- |
+| `OPENAI_API_KEY`             | Your OpenAI API key                   | —                |
+| `OPENAI_MODEL`               | Model to use                          | `gpt-4o`        |
+| `POSTGRES_HOST`              | Postgres host                         | `localhost`     |
+| `POSTGRES_PORT`              | Postgres port                         | `5432`          |
+| `POSTGRES_DB`                | Database name                         | `agentdb`       |
+| `POSTGRES_USER`              | Admin user                            | `agentuser`     |
+| `POSTGRES_PASSWORD`          | Admin password                        | —                |
+| `POSTGRES_READONLY_USER`     | Read-only user for the AI             | `agentreadonly` |
+| `POSTGRES_READONLY_PASSWORD` | Read-only user password               | —                |
+| `REDIS_HOST`                 | Redis host                            | `localhost`     |
+| `REDIS_PORT`                 | Redis port                            | `6379`          |
+| `REDIS_CACHE_TTL`            | Query result cache duration (seconds) | `3600`          |
+| `SECRET_KEY`                 | JWT signing key (future auth)         | —                |
+| `MAX_ROWS_PER_QUERY`         | Hard cap on rows returned             | `1000`          |
 
 ---
 
 ## API endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/v1/chat` | Submit a natural language question |
-| `GET` | `/api/v1/health` | Health check (Postgres + Redis status) |
-| `GET` | `/api/v1/schema` | Returns the current database schema |
+| Method   | Path               | Description                            |
+| -------- | ------------------ | -------------------------------------- |
+| `POST` | `/api/v1/chat`   | Submit a natural language question     |
+| `GET`  | `/api/v1/health` | Health check (Postgres + Redis status) |
+| `GET`  | `/api/v1/schema` | Returns the current database schema    |
 
 ### Chat request / response
 
@@ -335,11 +341,13 @@ npm run build         # production build (tsc + vite build)
 These features are planned for future iterations:
 
 ### Authentication
+
 - JWT-based login with access and refresh tokens
 - Protected routes on the frontend (login page before chat)
 - Per-user query history
 
 ### Frontend improvements
+
 - **Conversation persistence** — save and reload past sessions from local storage or the database
 - **Follow-up questions** — send conversation context to the AI for multi-turn analysis
 - **Chart customisation** — toggle between chart types, change axes
@@ -348,12 +356,14 @@ These features are planned for future iterations:
 - **Streaming responses** — stream the AI answer token by token instead of waiting for the full response
 
 ### Backend improvements
+
 - **Multi-step query decomposition** — break complex questions into sub-queries automatically
 - **Query history endpoint** — store every executed query with timing and result metadata
 - **Webhook support** — trigger data refreshes from external systems
 - **Multi-database support** — connect to MySQL, BigQuery, or Snowflake in addition to Postgres
 
 ### Infrastructure
+
 - Production Docker Compose with Nginx reverse proxy
 - GitHub Actions CI pipeline (lint, type-check, test)
 - Deployment guide for Railway / Render / fly.io
