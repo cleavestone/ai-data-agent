@@ -10,6 +10,7 @@ import json
 import logging
 
 from services.schema_service import get_schema_text
+from core.tracing import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ TOOL_DEFINITION = {
 }
 
 
+@traceable(run_type="tool", name="get_schema")
 async def execute() -> str:
     """Return the full database schema as a JSON string."""
     try:

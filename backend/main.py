@@ -19,6 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
+from core.tracing import setup_tracing
 from api.v1.router import router as v1_router
 from db.connection import create_pools, close_pools
 from services.cache_service import close_redis
@@ -42,6 +43,12 @@ async def lifespan(app: FastAPI):
     # ── Startup ───────────────────────────────────────────────
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Environment: {settings.app_env}")
+
+    # Initialise LangSmith tracing (no-op if no API key)
+    _ = setup_tracing(
+        api_key=settings.langsmith_api_key,
+        project_name=settings.langsmith_project,
+    )
 
     # Create DB connection pools — must happen before any request
     await create_pools()

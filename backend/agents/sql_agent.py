@@ -24,6 +24,7 @@ from typing import Any
 
 from agents.base_agent import get_client, get_model, get_max_tokens
 from agents.tools import get_schema, run_sql
+from core.tracing import trace
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +88,13 @@ class AgentResponse:
     Contains both the AI's text answer and the raw query result
     so the frontend can render tables and charts.
     """
+
     success: bool
-    answer: str                         # AI-generated text response
+    answer: str  # AI-generated text response
     columns: list[str] = field(default_factory=list)
     rows: list[dict] = field(default_factory=list)
     row_count: int = 0
-    sql_executed: str = ""              # for debugging/logging
+    sql_executed: str = ""  # for debugging/logging
     error: str | None = None
 
 
@@ -118,6 +120,7 @@ async def ask(question: str) -> AgentResponse:
     query_columns: list[str] = []
     query_rows: list[dict] = []
     row_count = 0
+    result: AgentResponse | None = None
 
     # ─────────────────────────────────────────────────────────
     # Agentic loop
@@ -128,73 +131,102 @@ async def ask(question: str) -> AgentResponse:
     max_iterations = 6
     iteration = 0
 
-    while iteration < max_iterations:
-        iteration += 1
-        logger.info(f"Agent loop iteration {iteration}")
+    with trace(
+        "sql_agent",
+        run_type="chain",
+        inputs={"question": question},
+    ) as run:
+        while iteration < max_iterations:
+            iteration += 1
+            logger.info(f"Agent loop iteration {iteration}")
 
-        # Call OpenAI
-        response = await client.chat.completions.create(
-            model=get_model(),
-            max_tokens=get_max_tokens(),
-            messages=messages,
-            tools=TOOLS,
-            tool_choice="auto",     # AI decides when to use tools
-        )
-
-        message = response.choices[0].message
-
-        # Add AI response to message history
-        messages.append(message)
-
-        # ── No tool calls — AI is done ────────────────────────
-        if not message.tool_calls:
-            logger.info(f"Agent completed in {iteration} iterations")
-            return AgentResponse(
-                success=True,
-                answer=message.content or "I could not generate a response.",
-                columns=query_columns,
-                rows=query_rows,
-                row_count=row_count,
-                sql_executed=sql_executed,
+            # Call OpenAI
+            response = await client.chat.completions.create(
+                model=get_model(),
+                max_tokens=get_max_tokens(),
+                messages=messages,
+                tools=TOOLS,
+                tool_choice="auto",  # AI decides when to use tools
             )
 
-        # ── Process each tool call ────────────────────────────
-        for tool_call in message.tool_calls:
-            tool_name = tool_call.function.name
-            tool_args = json.loads(tool_call.function.arguments)
+            message = response.choices[0].message
 
-            logger.info(f"Tool call: {tool_name}({tool_args})")
+            # Add AI response to message history
+            messages.append(message)
 
-            # Execute the tool
-            executor = TOOL_EXECUTORS.get(tool_name)
-            if not executor:
-                tool_result = json.dumps({"error": f"Unknown tool: {tool_name}"})
-            else:
-                tool_result = await executor(**tool_args)
+            # ── No tool calls — AI is done ────────────────────
+            if not message.tool_calls:
+                logger.info(f"Agent completed in {iteration} iterations")
+                result = AgentResponse(
+                    success=True,
+                    answer=message.content or "I could not generate a response.",
+                    columns=query_columns,
+                    rows=query_rows,
+                    row_count=row_count,
+                    sql_executed=sql_executed,
+                )
+                break
 
-            # Capture SQL and results for the AgentResponse
-            if tool_name == "run_sql":
-                sql_executed = tool_args.get("sql", "")
-                try:
-                    result_data = json.loads(tool_result)
-                    if result_data.get("success"):
-                        query_columns = result_data.get("columns", [])
-                        query_rows = result_data.get("rows", [])
-                        row_count = result_data.get("row_count", 0)
-                except json.JSONDecodeError:
-                    pass
+            # ── Process each tool call ────────────────────────
+            for tool_call in message.tool_calls:
+                tool_name = tool_call.function.name
+                tool_args = json.loads(tool_call.function.arguments)
 
-            # Add tool result to message history
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": tool_result,
-            })
+                logger.info(f"Tool call: {tool_name}({tool_args})")
 
-    # ── Max iterations reached ────────────────────────────────
-    logger.error(f"Agent hit max iterations ({max_iterations})")
-    return AgentResponse(
-        success=False,
-        answer="I was unable to complete the analysis. Please try rephrasing your question.",
-        error="max_iterations_exceeded",
-    )
+                # Execute the tool
+                executor = TOOL_EXECUTORS.get(tool_name)
+                if not executor:
+                    tool_result = json.dumps({"error": f"Unknown tool: {tool_name}"})
+                else:
+                    tool_result = await executor(**tool_args)
+
+                # Capture SQL and results for the AgentResponse
+                if tool_name == "run_sql":
+                    sql_executed = tool_args.get("sql", "")
+                    try:
+                        result_data = json.loads(tool_result)
+                        if result_data.get("success"):
+                            query_columns = result_data.get("columns", [])
+                            query_rows = result_data.get("rows", [])
+                            row_count = result_data.get("row_count", 0)
+                    except json.JSONDecodeError:
+                        pass
+
+                # Add tool result to message history
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": tool_result,
+                    }
+                )
+
+        # ── Handle max iterations ────────────────────────────
+        if result is None:
+            logger.error(f"Agent hit max iterations ({max_iterations})")
+            result = AgentResponse(
+                success=False,
+                answer="I was unable to complete the analysis. Please try rephrasing your question.",
+                error="max_iterations_exceeded",
+            )
+
+        # Attach metadata to the LangSmith trace
+        run.end(
+            outputs={
+                "answer": result.answer,
+                "success": result.success,
+                "sql_executed": result.sql_executed,
+                "row_count": result.row_count,
+            }
+        )
+        run.add_metadata(
+            {
+                "iterations": iteration,
+                "model": get_model(),
+            }
+        )
+        if result.sql_executed:
+            run.add_metadata({"sql": result.sql_executed[:800]})
+
+    return result

@@ -31,10 +31,10 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-    env_file=str(Path(__file__).parent.parent.parent / ".env"),
-    env_file_encoding="utf-8",
-    case_sensitive=False,
-    extra="ignore",
+        env_file=str(Path(__file__).parent.parent.parent / ".env"),
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
     )
 
     # ─────────────────────────────────────────
@@ -72,6 +72,12 @@ class Settings(BaseSettings):
     openai_api_key: str
     openai_model: str = Field(default="gpt-4o")
     openai_max_tokens: int = Field(default=4096)
+
+    # ─────────────────────────────────────────
+    # LangSmith (optional — tracing)
+    # ─────────────────────────────────────────
+    langsmith_api_key: str | None = Field(default=None)
+    langsmith_project: str = Field(default="ai-data-agent")
 
     # ─────────────────────────────────────────
     # Security
@@ -123,10 +129,7 @@ class Settings(BaseSettings):
     @property
     def redis_url(self) -> str:
         """Redis connection URL with password."""
-        return (
-            f"redis://:{self.redis_password}@"
-            f"{self.redis_host}:{self.redis_port}/0"
-        )
+        return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/0"
 
     # ─────────────────────────────────────────
     # Helper properties

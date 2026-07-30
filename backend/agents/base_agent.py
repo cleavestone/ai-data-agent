@@ -9,6 +9,7 @@ so individual agents stay focused on their job.
 import logging
 from openai import AsyncOpenAI
 from core.config import settings
+from core.tracing import wrap_openai
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Single shared client instance
 # AsyncOpenAI is thread-safe and designed to be reused
 # ─────────────────────────────────────────────────────────────
-openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
+openai_client = wrap_openai(AsyncOpenAI(api_key=settings.openai_api_key))
 
 
 def get_client() -> AsyncOpenAI:

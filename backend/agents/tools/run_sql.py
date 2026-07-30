@@ -10,6 +10,7 @@ import json
 import logging
 
 from db.query_runner import run_query
+from core.tracing import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +42,19 @@ async def execute(sql: str) -> str:
     result = await run_query(sql)
 
     if not result.success:
-        return json.dumps({
-            "success": False,
-            "error": result.error,
-        })
+        return json.dumps(
+            {
+                "success": False,
+                "error": result.error,
+            }
+        )
 
-    return json.dumps({
-        "success": True,
-        "columns": result.columns,
-        "rows": result.rows,
-        "row_count": result.row_count,
-        "execution_time_ms": round(result.execution_time_ms, 1),
-    })
+    return json.dumps(
+        {
+            "success": True,
+            "columns": result.columns,
+            "rows": result.rows,
+            "row_count": result.row_count,
+            "execution_time_ms": round(result.execution_time_ms, 1),
+        }
+    )
