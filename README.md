@@ -30,6 +30,7 @@ A full-stack natural language data querying tool. Ask questions about your busin
 | Database driver     | asyncpg (async PostgreSQL)                  |
 | Caching             | Redis 8 via redis-py                        |
 | Config / validation | Pydantic v2 + pydantic-settings             |
+| Tracing             | LangSmith (optional — set `LANGSMITH_API_KEY`) |
 | Package manager     | uv                                          |
 | Tests               | pytest + pytest-asyncio + httpx             |
 
@@ -79,6 +80,7 @@ ai-data-agent/
 │   │
 │   ├── core/                       # App-wide concerns
 │   │   ├── config.py               # Settings from .env (pydantic-settings)
+│   │   ├── tracing.py              # LangSmith setup + safe no-op wrappers
 │   │   ├── exceptions.py           # Custom exception types
 │   │   ├── logging.py              # Structured logging config
 │   │   └── security.py             # SQL validation, rate limiting
@@ -188,6 +190,24 @@ User question
 
 ---
 
+## Observability (LangSmith)
+
+Every LLM call, tool execution, agent iteration, and cache hit/miss is traced to [LangSmith](https://smith.langchain.com) — set `LANGSMITH_API_KEY` in `.env` to enable.
+
+```
+handle_question           ← cache status, total time
+  └── sql_agent           ← iterations, model, success/fail
+      ├── chat.completions.create  ← auto-traced (tokens, latency)
+      │   └── get_schema           ← schema returned to AI
+      ├── chat.completions.create  ← auto-traced
+      │   └── run_sql              ← SQL executed, row count
+      └── chat.completions.create  ← final answer
+```
+
+Each trace captures prompt/completion tokens, latency per call, the SQL generated, row counts, agent iteration count, and cache status. Tracing is fully opt-in — the app runs normally without a LangSmith key (no errors, no overhead).
+
+---
+
 ## Database schema
 
 The demo database ships with five tables and four pre-built views:
@@ -221,6 +241,7 @@ git clone https://github.com/your-username/ai-data-agent.git
 cd ai-data-agent
 cp .env.example .env
 # Edit .env — set OPENAI_API_KEY and all passwords
+# Optional: set LANGSMITH_API_KEY to enable LLM tracing
 ```
 
 ### 2. Start infrastructure
@@ -269,6 +290,8 @@ npm run dev
 | ------------------------------ | ------------------------------------- | ----------------- |
 | `OPENAI_API_KEY`             | Your OpenAI API key                   | —                |
 | `OPENAI_MODEL`               | Model to use                          | `gpt-4o`        |
+| `LANGSMITH_API_KEY`          | LangSmith tracing key (optional)      | —                |
+| `LANGSMITH_PROJECT`          | LangSmith project name                | `ai-data-agent` |
 | `POSTGRES_HOST`              | Postgres host                         | `localhost`     |
 | `POSTGRES_PORT`              | Postgres port                         | `5432`          |
 | `POSTGRES_DB`                | Database name                         | `agentdb`       |
